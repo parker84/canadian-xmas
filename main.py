@@ -12,21 +12,27 @@ SHOW_TOOL_CALLS = True
 
 def get_thinking_message() -> str:
     messages = [
-        "Thinking...",
-        "Searching the web...",
-        "Searching coast to coast... 🍁",
-        "Checking Canadian sources... 🇨🇦",
-        "Exploring local options... 🏠",
-        "Consulting Canadian experts... 👥",
-        "Mapping across provinces... 🗺️",
-        "Brewing up ideas... ☕",
-        "Skating through data... ⛸️",
-        "Searching from sea to sea... 🌊",
+        "Wrapping up ideas... 🎁",
+        "Shoveling through insights... ❄️",
+        "Skating through the data... ⛸️",
+        "Checking the North Pole archives... 🎅",
+        "Hopping province to province like a snowflake... ❄️",
+        "Sleigh-ing the search... 🛷",
+        "Brewing hot cocoa and facts... 🍫",
+        "Cutting fresh tracks through the web... 🎿",
+        "Gliding across frozen data lakes... 🧊",
+        "Lighting up the search like holiday lights... ✨",
+        "Searching from coast to *frozen* coast... 🌊",
+        "Consulting Canadian elves... 🇨🧝‍♂️",
+        "Scooping up frosty findings... 🥶",
+        "Tuning into Santa’s signal... 🎅",
+        "Crunching through snow-covered stats... 📊",
     ]
+
     return choice(messages)
 
 def login_screen():
-    st.header("Welcome to Canadian AI 🍁")
+    st.header("Welcome to Snowman ☃️")
     st.write("Please log in to continue.")
     if st.button("🔐 Log in with Google", type="primary"):
         st.login("google")
@@ -103,8 +109,8 @@ def add_floating_button(
 
 # Set page config
 st.set_page_config(
-    page_title="Canadian AI",
-    page_icon="🍁",
+    page_title="Snowman",
+    page_icon="☃️",
     initial_sidebar_state="collapsed",
 )
 
@@ -128,7 +134,7 @@ def show_waitlist(show_error: bool = True):
     """Display the waitlist signup form and message"""
     st.markdown("---")
     if show_error:
-        st.warning("🔒 You don't have access to Canadian AI just yet.")
+        st.warning("🔒 You don't have access to Snowman just yet.")
     st.write("Please join our waitlist to get access!")
     st.write("[Join the waitlist 📬](https://stan.store/brydon/p/canadian-ai-waitlist-)")
     st.markdown("---")
@@ -147,10 +153,16 @@ else:
         st.button("Log out", on_click=st.logout, type="secondary")
     
     # Main content
-    st.title("Canadian AI")
-    st.caption("AI that is biased to support Canadian businesses and the Canadian economy 🍁")
-    st.write(f"Welcome, {st.user.name if hasattr(st, 'user') else 'Guest'}! 👋") 
-    st.write("How can I help you today?")
+    st.title("Snowman ☃️")
+    st.caption("Christmas ❄️ Shopping Assistant that is biased to support Canadian businesses 🍁")
+    first_name = st.user.name.split(' ')[0] if hasattr(st, 'user') else 'Guest'
+    intro_messages = [
+        f"Welcome {first_name}, how can I make your holiday season better? 🎄",
+        f"Hi {first_name}, what can I do to help you this holiday season? ❄️",
+        f"I'm glad you're here {first_name}, how can I help you this holiday season? 🎄",
+        f"What can I do to help you this holiday season {first_name}? ❄️",
+    ]
+    st.write(choice(intro_messages)) 
 
 add_floating_button(
     link="https://forms.gle/LNdMMnniVND7qTRq8",
@@ -164,7 +176,7 @@ if hasattr(st.user, 'is_logged_in') and st.user.is_logged_in and st.user.email i
 
     # Display chat messages
     for message in st.session_state.messages:
-        with st.chat_message(message["role"], avatar="🍁" if message["role"] == "assistant" else "💁‍♀️"):
+        with st.chat_message(message["role"], avatar="🎄" if message["role"] == "assistant" else "❄️"):
             st.markdown(message["content"])
 
     @st.cache_data
@@ -205,11 +217,11 @@ if hasattr(st.user, 'is_logged_in') and st.user.is_logged_in and st.user.email i
         st.session_state.messages.append({"role": "user", "content": prompt})
         
         # Display user message
-        with st.chat_message("user", avatar="💁‍♀️"):
+        with st.chat_message("user", avatar="❄️"):
             st.markdown(prompt)
         
         # Display assistant response
-        with st.chat_message("assistant", avatar="🍁"):
+        with st.chat_message("assistant", avatar="🎄"):
             message_placeholder = st.empty()
             
             with st.spinner(get_thinking_message()):
