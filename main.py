@@ -43,16 +43,11 @@ if "session_id" not in st.session_state:
     st.session_state.session_id = str(uuid.uuid4())  # Generate new UUID
 
 def add_floating_button(
+    colours: dict,
     link: str = "https://buymeacoffee.com/brydon",
     emoji: str = "☕️",
     text: str = "Buy me a coffee",
     position: dict = {"bottom": "40px", "right": "40px"},
-    colors: dict = {
-        "background": "#f8f9fa",
-        "text": "#666",
-        "text_hover": "#222",
-        "background_hover": "#f1f3f4"
-    }
 ):
     """Add a floating button to the page with customizable properties."""
     # Initialize session state for page refresh counter
@@ -71,7 +66,7 @@ def add_floating_button(
             bottom: {position["bottom"]};
             right: {position["right"]};
             z-index: 100;
-            background: {colors["background"]};
+            background: {colours["background"]};
             border-radius: 8px;
             box-shadow: 0 2px 8px rgba(0,0,0,0.10);
             padding: 0;
@@ -85,7 +80,7 @@ def add_floating_button(
         .coffee-btn a {{
             display: block;
             padding: 10px 20px 10px 20px;
-            color: {colors["text"]};
+            color: {colours["text"]};
             text-decoration: none;
             font-weight: normal;
             font-size: 15px;
@@ -94,8 +89,8 @@ def add_floating_button(
             transition: background 0.2s, color 0.2s;
         }}
         .coffee-btn a:hover {{
-            background: {colors["background_hover"]};
-            color: {colors["text_hover"]};
+            background: {colours["background_hover"]};
+            color: {colours["text_hover"]};
         }}
     </style>
     <div class="coffee-btn" id="coffee-btn">
@@ -115,7 +110,8 @@ st.set_page_config(
 )
 
 with st.sidebar:
-    st.link_button("📧 Contact Us", "mailto:parkerbrydon@gmail.com")
+    st.link_button("❤️ Help us improve", "https://forms.gle/5dWaY279oFsfwhTw9")
+    st.link_button("📧 Contact us", "mailto:parkerbrydon@gmail.com")
 
 # Initialize session state for chat history
 if "messages" not in st.session_state:
@@ -143,14 +139,13 @@ if not hasattr(st, 'user') or not hasattr(st.user, 'is_logged_in') or not st.use
     login_screen()
     show_waitlist(show_error=False)
 elif st.user.email not in ALLOWED_EMAILS:
-    st.sidebar.button("Log out", on_click=st.logout, type="secondary")
+    st.sidebar.button("🔒 Log out", on_click=st.logout, type="secondary")
     show_waitlist(show_error=True)
 else:
     # Show the main app interface
     # Sidebar content
     with st.sidebar:
-        st.markdown("---")  # Add a divider
-        st.button("Log out", on_click=st.logout, type="secondary")
+        st.button("🔐 Log out", on_click=st.logout, type="secondary")
     
     # Main content
     st.title("Snowman ☃️")
@@ -164,13 +159,6 @@ else:
     ]
     st.write(choice(intro_messages)) 
 
-add_floating_button(
-    link="https://forms.gle/LNdMMnniVND7qTRq8",
-    emoji="❤️",
-    text="Help us improve",
-    position={"bottom": "40px", "right": "40px"},
-    colors={"background": "#f8f9fa", "text": "#666", "text_hover": "#222", "background_hover": "#f1f3f4"}
-)
 
 if hasattr(st.user, 'is_logged_in') and st.user.is_logged_in and st.user.email in ALLOWED_EMAILS:
 
@@ -179,18 +167,17 @@ if hasattr(st.user, 'is_logged_in') and st.user.is_logged_in and st.user.email i
         with st.chat_message(message["role"], avatar="🎄" if message["role"] == "assistant" else "❄️"):
             st.markdown(message["content"])
 
-    @st.cache_data
     def get_placeholder():
         return choice([
-            "Help me find a gift for my father",
-            "I want to find some new music",
-            "I'm in the market for a pair of jeans",
-            "I want to find a new movie to watch",
-            "What book should I read next?",
-            "What's the top tv show to watch right now?",
-            "I need a new car",
-            "I'm trying to find some new yoga pants",
-            "I'm looking for a new pair of shoes",
+            "Help me find a Christmas gift for my father 🎁",
+            "Looking for cozy Canadian-made slippers for my mom ❄️",
+            "Help me find a new flannel for my husband 🍁",
+            "Canadian made hockey stick for my son 🏒",
+            "Find me some cozy Canadian Christmas pajamas for my kids 🎄",
+            "I want to get my mom a new pair of snow boots ❄️",
+            "Looking for a Canadian-made sweater for my wife ❤️",
+            "Help me find a new pair of jeans for my daughter 👖",
+            "My wife needs a new pair of yoga pants - can you help? 🧘‍♀️",
         ])
 
     # add_floating_button(
@@ -198,7 +185,7 @@ if hasattr(st.user, 'is_logged_in') and st.user.is_logged_in and st.user.email i
     #     emoji="☕️",
     #     text="Buy me a coffee",
     #     position={"bottom": "40px", "right": "40px"},
-    #     colors={"background": "#f8f9fa", "text": "#666", "text_hover": "#222", "background_hover": "#f1f3f4"}
+    #     colours={"background": "#f8f9fa", "text": "#666", "text_hover": "#222", "background_hover": "#f1f3f4"}
     # )
 
     async def run_agent():
