@@ -195,15 +195,8 @@ def get_agent_team():
 
             Leverage the team of agents you have to accomplish the user's request.
             - if the user is asking for / about a product, use the product finder agent.
-            - if the user is asking for / about a service, use the service finder agent.
             - if the user is asking for / about a brand, use the brand finder agent.
-            - if the user is asking for / about music, use the music finder agent.
-            - if the user is asking for / about a movie, use the movie finder agent.
-            - if the user is asking for / about a tv show, use the tv show finder agent.
-            - if the user is asking for / about a book, use the book finder agent.
-            - if the user is asking for / about an artist, use the artist finder agent.
             - if the user is asking for / about a gift, use the gift finder agent.
-            - if the user is asking for / about a car, use the car finder agent.
 
             Ask questions to get a better understanding of the user's needs, but  not too many to annoy the user.
             Usually keep it to 1 follow up question max before trying to answer the user's question.
