@@ -8,6 +8,7 @@ dependencies = [
     "agno>=2.2.13",
     "coloredlogs>=15.0.1",
     "openai>=2.8.0",
+    "sqlalchemy>=2.0.44",
     "streamlit>=1.51.0",
 ]
 
