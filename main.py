@@ -14,6 +14,7 @@ coloredlogs.install(level=os.getenv("LOG_LEVEL", "INFO"), logger=logger)
 
 ALLOWED_EMAILS = set(config('ALLOWED_EMAILS').split(','))
 SHOW_TOOL_CALLS = True
+AGENT_MODE = True # True if using a single agent, False if using the entre team
 
 def get_thinking_message() -> str:
     messages = [
@@ -126,11 +127,18 @@ if "messages" not in st.session_state:
 
 async def parse_stream(stream: AsyncIterator[RunOutput]) -> AsyncGenerator[tuple[str, str], None]:
     async for chunk in stream:
+        logger.debug(f"chunk: {chunk}")
         if hasattr(chunk, "event"):
-            if chunk.event == 'TeamRunContent' and chunk.content:
-                yield ("content", chunk.content)
-            elif SHOW_TOOL_CALLS and chunk.event == "ToolCallStarted":
-                yield ("tool_call", f"🔧 {chunk.tool.tool_name} - {chunk.tool.tool_args}")  # More concise tool call display
+            if AGENT_MODE:
+                if chunk.event == 'RunContent' and chunk.content:
+                    yield ("content", chunk.content)
+                elif SHOW_TOOL_CALLS and chunk.event == "ToolCallStarted":
+                    yield ("tool_call", f"🔧 {chunk.tool.tool_name} - {chunk.tool.tool_args}")  # More concise tool call display
+            else:
+                if chunk.event == 'TeamRunContent' and chunk.content:
+                    yield ("content", chunk.content)
+                elif SHOW_TOOL_CALLS and chunk.event == "ToolCallStarted":
+                    yield ("tool_call", f"🔧 {chunk.tool.tool_name} - {chunk.tool.tool_args}")  # More concise tool call display
             
 
 def show_waitlist(show_error: bool = True):

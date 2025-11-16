@@ -16,6 +16,8 @@ TIMEOUT = 5.0
 MAX_CONNECTIONS = 20
 MAX_KEEPALIVE_CONNECTIONS = 20
 HEADERS = {"x-puremd-api-token": PUREMD_API_KEY}
+MAX_QUERIES = 3             # don’t let it fan out more than this
+MAX_CHARS_PER_RESULT = 4000 # ~2–3k tokens max per query
 
 # ---------- Shared HTTP client (HTTP/2 + pooling) ----------
 _http_client: httpx.AsyncClient | None = None
@@ -129,7 +131,8 @@ async def fetch_urls(urls: List[str]) -> Dict[str, str]:
     MODEL GUIDANCE
     - If you’re about to call `fetch_url_contents` multiple times, **combine them into one**
       `fetch_urls([...])` call instead.
-    - Keep lists reasonable (≤ 10–15) unless strictly necessary.
+    - Keep the number of urls to a reasonable number (less than 5).
+    - Limits the total number of characters per result to 4000.
 
     EXAMPLE
     >>> await fetch_urls([
@@ -145,7 +148,7 @@ async def fetch_urls(urls: List[str]) -> Dict[str, str]:
         try:
             async with _semaphore:
                 r = await client.get(f'{PUREMD_API_URL}/{u}')
-            return (u, r.text if r.status_code == 200 else "")
+            return (u, r.text[:MAX_CHARS_PER_RESULT] if r.status_code == 200 else "")
         except Exception:
             return (u, "")
 
@@ -173,6 +176,7 @@ async def search_web_multi(queries: List[str]) -> Dict[str, str]:
     BEHAVIOR & PERFORMANCE
     - Uses a shared HTTP/2 client and parallelization with a concurrency cap (default 10).
     - This minimizes round-trips compared to serial tool calls.
+    - Limits the total number of queries to 3 and the total number of characters per result to 4000.
 
     MODEL GUIDANCE
     - If you’re planning to call `search_web` multiple times in a row, **batch them** into a single
@@ -196,11 +200,11 @@ async def search_web_multi(queries: List[str]) -> Dict[str, str]:
             async with _semaphore:
                 r = await client.get(f'{PUREMD_API_URL}/search?q={quote(q)}')
             r.raise_for_status()
-            return (q, r.text)
+            return (q, r.text[:MAX_CHARS_PER_RESULT])
         except Exception:
             return (q, "")
 
     # Small safety: de-dup to avoid wasted calls
-    dedup = list(dict.fromkeys(queries or []))[:50]  # hard ceiling, adjust if needed
+    dedup = list(dict.fromkeys(queries or []))[:MAX_QUERIES]  # hard ceiling, adjust if needed
     results = await asyncio.gather(*[one(q) for q in dedup], return_exceptions=False)
     return {q: text for (q, text) in results}
