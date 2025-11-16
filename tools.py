@@ -6,6 +6,17 @@ import asyncio
 from typing import List, Dict, Tuple
 from urllib.parse import quote
 
+# ---------- Constants ----------
+PUREMD_API_URL = "https://pure.md"
+PUREMD_API_KEY = os.environ.get("PUREMD_API_KEY")
+MAX_PARALLEL = 5
+CACHE_DIR = "/tmp/agno_cache"
+CACHE_TTL = 60*60
+TIMEOUT = 5.0
+MAX_CONNECTIONS = 20
+MAX_KEEPALIVE_CONNECTIONS = 20
+HEADERS = {"x-puremd-api-token": PUREMD_API_KEY}
+
 # ---------- Shared HTTP client (HTTP/2 + pooling) ----------
 _http_client: httpx.AsyncClient | None = None
 _client_lock = asyncio.Lock()
@@ -21,12 +32,12 @@ async def get_client() -> httpx.AsyncClient:
             if _http_client is None:
                 _http_client = httpx.AsyncClient(
                     http2=True,
-                    timeout=httpx.Timeout(20.0),
+                    timeout=httpx.Timeout(TIMEOUT),
                     limits=httpx.Limits(
-                        max_connections=100,
-                        max_keepalive_connections=20,
+                        max_connections=MAX_CONNECTIONS,
+                        max_keepalive_connections=MAX_KEEPALIVE_CONNECTIONS,
                     ),
-                    headers={"x-puremd-api-token": os.environ.get("PUREMD_API_KEY")}
+                    headers=HEADERS
                 )
     return _http_client
 
@@ -35,7 +46,7 @@ async def get_client() -> httpx.AsyncClient:
 # Single-item tools
 # =========================
 
-@tool(cache_results=True, cache_dir="/tmp/agno_cache", cache_ttl=60*60)
+@tool(cache_results=True, cache_dir=CACHE_DIR, cache_ttl=CACHE_TTL)
 async def fetch_url_contents(url: str = '') -> str:
     """
     Fetch the contents (HTML or text) of a single URL.
@@ -56,13 +67,13 @@ async def fetch_url_contents(url: str = '') -> str:
     """
     if isinstance(url, str) and url.strip():
         client = await get_client()
-        r = await client.get(f'https://pure.md/{url}')
+        r = await client.get(f'{PUREMD_API_URL}/{url}')
         if r.status_code == 200:
             return r.text
     return ""
 
 
-@tool(cache_results=True, cache_dir="/tmp/agno_cache", cache_ttl=60*60)
+@tool(cache_results=True, cache_dir=CACHE_DIR, cache_ttl=CACHE_TTL)
 async def search_web(query: str = '') -> str:
     """
     Run a single web search query.
@@ -83,7 +94,7 @@ async def search_web(query: str = '') -> str:
     """
     if isinstance(query, str) and query.strip():
         client = await get_client()
-        r = await client.get(f'https://pure.md/search?q={quote(query)}')
+        r = await client.get(f'{PUREMD_API_URL}/search?q={quote(query)}')
         r.raise_for_status()
         return r.text
     return ""
@@ -94,10 +105,9 @@ async def search_web(query: str = '') -> str:
 # =========================
 
 # Optional: cap parallelism to avoid over-fan-out
-_MAX_PARALLEL = int(os.environ.get("BATCH_MAX_PARALLEL", "10"))
-_semaphore = asyncio.Semaphore(_MAX_PARALLEL)
+_semaphore = asyncio.Semaphore(MAX_PARALLEL)
 
-@tool(cache_results=True, cache_dir="/tmp/agno_cache", cache_ttl=60*60)
+@tool(cache_results=True, cache_dir=CACHE_DIR, cache_ttl=CACHE_TTL)
 async def fetch_urls(urls: List[str]) -> Dict[str, str]:
     """
     Fetch multiple URLs **in parallel** (fast path). Prefer this over repeated `fetch_url_contents`.
@@ -134,7 +144,7 @@ async def fetch_urls(urls: List[str]) -> Dict[str, str]:
             return (u, "")
         try:
             async with _semaphore:
-                r = await client.get(f'https://pure.md/{u}')
+                r = await client.get(f'{PUREMD_API_URL}/{u}')
             return (u, r.text if r.status_code == 200 else "")
         except Exception:
             return (u, "")
@@ -145,7 +155,7 @@ async def fetch_urls(urls: List[str]) -> Dict[str, str]:
     return {u: text for (u, text) in results}
 
 
-@tool(cache_results=True, cache_dir="/tmp/agno_cache", cache_ttl=60*60)
+@tool(cache_results=True, cache_dir=CACHE_DIR, cache_ttl=CACHE_TTL)
 async def search_web_multi(queries: List[str]) -> Dict[str, str]:
     """
     Run multiple web search queries **in parallel** (fast path). Prefer this over repeated `search_web`.
@@ -184,7 +194,7 @@ async def search_web_multi(queries: List[str]) -> Dict[str, str]:
             return (q, "")
         try:
             async with _semaphore:
-                r = await client.get(f'https://pure.md/search?q={quote(q)}')
+                r = await client.get(f'{PUREMD_API_URL}/search?q={quote(q)}')
             r.raise_for_status()
             return (q, r.text)
         except Exception:
