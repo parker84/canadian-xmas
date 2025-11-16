@@ -5,14 +5,13 @@ from team import get_agent_team
 from random import choice
 import uuid
 import asyncio
-from decouple import config
 import coloredlogs, logging
 import os
 
 logger = logging.getLogger(__name__)
 coloredlogs.install(level=os.getenv("LOG_LEVEL", "INFO"), logger=logger)
 
-ALLOWED_EMAILS = set(config('ALLOWED_EMAILS').split(','))
+# ALLOWED_EMAILS = set(config('ALLOWED_EMAILS').split(','))
 SHOW_TOOL_CALLS = True
 AGENT_MODE = True # True if using a single agent, False if using the entre team
 
@@ -50,65 +49,65 @@ def login_screen():
 if "session_id" not in st.session_state:
     st.session_state.session_id = str(uuid.uuid4())  # Generate new UUID
 
-def add_floating_button(
-    colours: dict,
-    link: str = "https://buymeacoffee.com/brydon",
-    emoji: str = "☕️",
-    text: str = "Buy me a coffee",
-    position: dict = {"bottom": "40px", "right": "40px"},
-):
-    """Add a floating button to the page with customizable properties."""
-    # Initialize session state for page refresh counter
-    if "page_refresh_count" not in st.session_state:
-        st.session_state.page_refresh_count = 0
+# def add_floating_button(
+#     colours: dict,
+#     link: str = "https://buymeacoffee.com/brydon",
+#     emoji: str = "☕️",
+#     text: str = "Buy me a coffee",
+#     position: dict = {"bottom": "40px", "right": "40px"},
+# ):
+#     """Add a floating button to the page with customizable properties."""
+#     # Initialize session state for page refresh counter
+#     if "page_refresh_count" not in st.session_state:
+#         st.session_state.page_refresh_count = 0
     
-    # Increment the counter on each page load
-    st.session_state.page_refresh_count += 1
+#     # Increment the counter on each page load
+#     st.session_state.page_refresh_count += 1
     
-    # Use st.markdown with a direct HTML anchor tag for the button
-    st.markdown(
-        f"""
-    <style>
-        .coffee-btn {{
-            position: fixed;
-            bottom: {position["bottom"]};
-            right: {position["right"]};
-            z-index: 100;
-            background: {colours["background"]};
-            border-radius: 8px;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.10);
-            padding: 0;
-            opacity: 0.85;
-            transition: opacity 0.2s;
-            min-width: 0;
-        }}
-        .coffee-btn:hover {{
-            opacity: 1;
-        }}
-        .coffee-btn a {{
-            display: block;
-            padding: 10px 20px 10px 20px;
-            color: {colours["text"]};
-            text-decoration: none;
-            font-weight: normal;
-            font-size: 15px;
-            background: none;
-            border-radius: 8px;
-            transition: background 0.2s, color 0.2s;
-        }}
-        .coffee-btn a:hover {{
-            background: {colours["background_hover"]};
-            color: {colours["text_hover"]};
-        }}
-    </style>
-    <div class="coffee-btn" id="coffee-btn">
-        <a href="{link}" target="_blank" rel="noopener noreferrer">
-            {emoji if st.session_state.page_refresh_count > 1 else f"{text} {emoji}"}
-        </a>
-    </div>
-    """,
-        unsafe_allow_html=True,
-    )
+#     # Use st.markdown with a direct HTML anchor tag for the button
+#     st.markdown(
+#         f"""
+#     <style>
+#         .coffee-btn {{
+#             position: fixed;
+#             bottom: {position["bottom"]};
+#             right: {position["right"]};
+#             z-index: 100;
+#             background: {colours["background"]};
+#             border-radius: 8px;
+#             box-shadow: 0 2px 8px rgba(0,0,0,0.10);
+#             padding: 0;
+#             opacity: 0.85;
+#             transition: opacity 0.2s;
+#             min-width: 0;
+#         }}
+#         .coffee-btn:hover {{
+#             opacity: 1;
+#         }}
+#         .coffee-btn a {{
+#             display: block;
+#             padding: 10px 20px 10px 20px;
+#             color: {colours["text"]};
+#             text-decoration: none;
+#             font-weight: normal;
+#             font-size: 15px;
+#             background: none;
+#             border-radius: 8px;
+#             transition: background 0.2s, color 0.2s;
+#         }}
+#         .coffee-btn a:hover {{
+#             background: {colours["background_hover"]};
+#             color: {colours["text_hover"]};
+#         }}
+#     </style>
+#     <div class="coffee-btn" id="coffee-btn">
+#         <a href="{link}" target="_blank" rel="noopener noreferrer">
+#             {emoji if st.session_state.page_refresh_count > 1 else f"{text} {emoji}"}
+#         </a>
+#     </div>
+#     """,
+#         unsafe_allow_html=True,
+#     )
 
 # Set page config
 st.set_page_config(
@@ -152,10 +151,10 @@ def show_waitlist(show_error: bool = True):
 
 if not hasattr(st, 'user') or not hasattr(st.user, 'is_logged_in') or not st.user.is_logged_in:
     login_screen()
-    show_waitlist(show_error=False)
-elif st.user.email not in ALLOWED_EMAILS:
-    st.sidebar.button("🔒 Log out", on_click=st.logout, type="secondary")
-    show_waitlist(show_error=True)
+    # show_waitlist(show_error=False)
+# elif st.user.email not in ALLOWED_EMAILS:
+#     st.sidebar.button("🔒 Log out", on_click=st.logout, type="secondary")
+#     show_waitlist(show_error=True)
 else:
     # Show the main app interface
     # Sidebar content
@@ -175,7 +174,7 @@ else:
     st.write(choice(intro_messages)) 
 
 
-if hasattr(st.user, 'is_logged_in') and st.user.is_logged_in and st.user.email in ALLOWED_EMAILS:
+if hasattr(st.user, 'is_logged_in') and st.user.is_logged_in:
 
     # Display chat messages
     for message in st.session_state.messages:
