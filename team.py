@@ -33,7 +33,7 @@ MAX_TOOL_CALLS = 3
 # TODO: more search results with LLM reranking on top?
 # TODO: switch over to cohere LLM
 
-product_finding_instructions = dedent("""
+product_finding_instructions = dedent(f"""
     Find and recommend the best Canadian products - that are from Canadian owned and operated businesses.
     Don't forget to include classic / iconic and well known Canadian brands (when applicable) like: Roots, Lululemon, Canada Goose, Aritzia, Joe Fresh, Red Canoe, etc.
     Try to find 5-10 options ranked by ratings / your evaluation of the best options.
