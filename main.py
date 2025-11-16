@@ -6,6 +6,11 @@ from random import choice
 import uuid
 import asyncio
 from decouple import config
+import coloredlogs, logging
+import os
+
+logger = logging.getLogger(__name__)
+coloredlogs.install(level=os.getenv("LOG_LEVEL", "INFO"), logger=logger)
 
 ALLOWED_EMAILS = set(config('ALLOWED_EMAILS').split(','))
 SHOW_TOOL_CALLS = True
@@ -30,6 +35,8 @@ def get_thinking_message() -> str:
     ]
 
     return choice(messages)
+
+# TODO: remove waitlist concept and just have the login screen
 
 def login_screen():
     st.header("Welcome to Snowman ☃️")
@@ -167,6 +174,7 @@ if hasattr(st.user, 'is_logged_in') and st.user.is_logged_in and st.user.email i
         with st.chat_message(message["role"], avatar="🎄" if message["role"] == "assistant" else "❄️"):
             st.markdown(message["content"])
 
+    @st.cache_data # not sure why but it breaks if we don't cache this
     def get_placeholder():
         return choice([
             "Help me find a Christmas gift for my father 🎁",
@@ -227,7 +235,7 @@ if hasattr(st.user, 'is_logged_in') and st.user.is_logged_in and st.user.email i
                     current_tool_call = ""
                     
                     async for content_type, content in parsed_stream:
-                        print(f"content_type: {content_type}, content: {content}")
+                        logger.debug(f"content_type: {content_type}, content: {content}")
                         if content_type == "tool_call":
                             # Show tool call as a temporary caption
                             current_tool_call = content
