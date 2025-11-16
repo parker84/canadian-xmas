@@ -28,7 +28,7 @@ def get_thinking_message() -> str:
         "Gliding across frozen data lakes... 🧊",
         "Lighting up the search like holiday lights... ✨",
         "Searching from coast to *frozen* coast... 🌊",
-        "Consulting Canadian elves... 🇨🧝‍♂️",
+        "Consulting Canadian elves... 🧝‍♂️",
         "Scooping up frosty findings... 🥶",
         "Tuning into Santa’s signal... 🎅",
         "Crunching through snow-covered stats... 📊",
