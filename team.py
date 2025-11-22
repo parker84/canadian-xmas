@@ -5,8 +5,7 @@ from agno.models.openai import OpenAIChat
 from textwrap import dedent
 from agno.db.postgres import PostgresDb
 from decouple import config
-from agno.team.team import Team
-from tools import fetch_url_contents, search_web, fetch_urls, search_web_multi
+from tools import fetch_urls, search_web_multi
 import os
 import coloredlogs, logging
 
@@ -17,7 +16,7 @@ coloredlogs.install(level=os.getenv("LOG_LEVEL", "INFO"), logger=logger)
 # TODO: handle context windows getting too large
 
 # ------------constants
-DEBUG_MODE = os.getenv("DEBUG_MODE", "True").lower() == "true"
+DEBUG_MODE = os.getenv("LOG_LEVEL", "INFO").upper() == "DEBUG"
 # MODEL_ID = "gpt-4.1-mini" # -> not good enough
 # MODEL_ID = "gpt-4.1" # -> hitting TPM rate limit w pure md
 # AGENT_MODEL_ID = "gpt-5-mini"
@@ -31,7 +30,6 @@ ADDITIONAL_CONTEXT = dedent("""
 """)
 MAX_TOOL_CALLS = 3
 NUM_HISTORY_RUNS = 3
-NUM_HISTORY_MESSAGES = 3
 
 # TODO: more search results with LLM reranking on top?
 # TODO: switch over to cohere LLM
@@ -76,11 +74,9 @@ product_finding_instructions = dedent(f"""
 # ------------database / storage / setup
 db_url = f"postgresql+psycopg://{config('POSTGRES_USER')}:{config('POSTGRES_PASSWORD')}@{config('POSTGRES_HOST')}/{config('POSTGRES_DB')}"
 
-logger.info("Setting up storage")
 team_storage = PostgresDb(
     db_url=db_url
 )
-logger.info("Storage setup complete ✅")
 
 # TODO:
 # 1. verify the memory still works
@@ -111,7 +107,6 @@ def get_agent_team():
         db=team_storage,
         add_history_to_context=True,
         num_history_runs=NUM_HISTORY_RUNS,
-        num_history_messages=NUM_HISTORY_MESSAGES
     )
 
     # brand_finder_agent = Agent(
