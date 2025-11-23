@@ -24,6 +24,7 @@ from decouple import config
 import psycopg
 from psycopg.types.json import Json
 from openai import AsyncOpenAI
+import cohere
 
 from team import get_agent_team
 
@@ -43,7 +44,11 @@ MAX_CONCURRENT_RESPONSES = 3  # Parallel Snowman responses
 # LLM Configuration - easily switchable
 LLM_PROVIDER = config("LLM_PROVIDER", default="openai") # openai, cohere, etc.
 LLM_MODEL = config("LLM_MODEL", default="gpt-5-nano") # gpt-4o, gpt-5-mini, etc.
-EMBEDDING_MODEL = "text-embedding-3-small"
+# LLM_PROVIDER = "cohere"
+# LLM_MODEL = "command-a-03-2025" # $2.50 / 1M input tokens
+# LLM_MODEL = 'command-r7b-12-2024' # $0.0375 / 1M input tokens
+EMBEDDING_PROVIDER = "cohere"
+EMBEDDING_MODEL = "embed-v4.0"
 EMBEDDING_DIMENSIONS = 1536
 
 # Database Configuration
@@ -91,39 +96,65 @@ class LLMProvider:
     def __init__(self, provider: str = "openai", model: str = "gpt-4o-mini"):
         self.provider = provider
         self.model = model
+        self.embedding_provider = EMBEDDING_PROVIDER
+        self.embedding_model = EMBEDDING_MODEL
         
         if provider == "openai":
             self.client = AsyncOpenAI(api_key=os.getenv("OPENAI_API_KEY"))
         elif provider == "cohere":
-            # Add Cohere client here if needed
-            raise NotImplementedError("Cohere support coming soon")
+            self.client = cohere.AsyncClientV2(api_key=config("COHERE_API_KEY"))
         else:
             raise ValueError(f"Unsupported LLM provider: {provider}")
+        
+        if self.embedding_provider == "openai":
+            self.embedding_client = AsyncOpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+        elif self.embedding_provider == "cohere":
+            self.embedding_client = cohere.AsyncClientV2(api_key=config("COHERE_API_KEY"))
+        else:
+            raise ValueError(f"Unsupported embedding provider: {self.embedding_provider}")
     
     async def generate(self, prompt: str, system_prompt: str = "") -> str:
         """Generate text using the configured LLM"""
+        
+        messages = []
+        if system_prompt:
+            messages.append({"role": "system", "content": system_prompt})
+        messages.append({"role": "user", "content": prompt})
+        
         if self.provider == "openai":
-            messages = []
-            if system_prompt:
-                messages.append({"role": "system", "content": system_prompt})
-            messages.append({"role": "user", "content": prompt})
-            
             response = await self.client.chat.completions.create(
                 model=self.model,
                 messages=messages,
             )
             return response.choices[0].message.content
         
+        elif self.provider == "cohere":
+            response = await self.client.chat(
+                model=self.model,
+                messages=messages,
+            )
+            return response.message.content[0].text
+        
         raise NotImplementedError(f"Provider {self.provider} not implemented")
     
     async def generate_embedding(self, text: str) -> List[float]:
         """Generate embeddings for text"""
-        if self.provider == "openai":
-            response = await self.client.embeddings.create(
-                model=EMBEDDING_MODEL,
+        if self.embedding_provider == "openai":
+            response = await self.embedding_client.embeddings.create(
+                model=self.embedding_model,
                 input=text,
             )
             return response.data[0].embedding
+        
+        elif self.embedding_provider == "cohere":
+            response = await self.embedding_client.embed(
+                texts=[text],
+                model=self.embedding_model,
+                input_type="search_document",  # For indexing/storage
+                embedding_types=["float"],
+                output_dimension=int(EMBEDDING_DIMENSIONS),
+            )
+            return response.embeddings.float_[0]
         
         raise NotImplementedError(f"Provider {self.provider} not implemented")
 
