@@ -8,21 +8,23 @@ from urllib.parse import quote
 import logging
 import time
 import coloredlogs
+from decouple import config
 
 logger = logging.getLogger(__name__)
 coloredlogs.install(level=os.getenv("LOG_LEVEL", "INFO"), logger=logger)
 
 # ---------- Constants ----------
 PUREMD_API_URL = "https://pure.md"
-PUREMD_API_KEY = os.environ.get("PUREMD_API_KEY")
+PUREMD_API_KEY = config("PUREMD_API_KEY", default=None)
 MAX_PARALLEL = 5
 CACHE_DIR = "/tmp/agno_cache"
 CACHE_TTL = 60*60
 TIMEOUT = 5.0
 MAX_CONNECTIONS = 20
 MAX_KEEPALIVE_CONNECTIONS = 20
-HEADERS = {"x-puremd-api-token": PUREMD_API_KEY}
-MAX_QUERIES = 3             # don’t let it fan out more than this
+# Only include API key header if it's set
+HEADERS = {"x-puremd-api-token": PUREMD_API_KEY} if PUREMD_API_KEY else {}
+MAX_QUERIES = 3             # don't let it fan out more than this
 MAX_CHARS_PER_RESULT = 4000 # ~2–3k tokens max per query
 
 # ---------- Shared HTTP client (HTTP/2 + pooling) ----------

@@ -83,6 +83,10 @@ team_storage = PostgresDb(
 # 2. understand the routing
 # 3. verify the web search is working
 
+# TODO: make a new version of this that uses cohere
+# 1. command-r for scraping / absorbing lots of data
+# 2. command-a for analyzing the data and making recommendations / tool calls
+
 @st.cache_resource
 def get_agent_team():
     product_finder_agent = Agent(
