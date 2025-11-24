@@ -1,7 +1,7 @@
 import streamlit as st
 from agno.agent import Agent
 from agno.models.openai import OpenAIChat
-# from agno.models.cohere import Cohere # TODO: fix this not working now
+from agno.models.cohere import Cohere
 from textwrap import dedent
 from agno.db.postgres import PostgresDb
 from decouple import config
@@ -13,16 +13,16 @@ import coloredlogs, logging
 logger = logging.getLogger(__name__)
 coloredlogs.install(level=os.getenv("LOG_LEVEL", "INFO"), logger=logger)
 
-# TODO: handle context windows getting too large
-
 # ------------constants
 DEBUG_MODE = os.getenv("LOG_LEVEL", "INFO").upper() == "DEBUG"
-# MODEL_ID = "gpt-4.1-mini" # -> not good enough
-# MODEL_ID = "gpt-4.1" # -> hitting TPM rate limit w pure md
-# AGENT_MODEL_ID = "gpt-5-mini"
-AGENT_MODEL_ID = "gpt-5-nano"
-# ROUTER_MODEL_ID = "gpt-5-nano"
-TEMPERATURE = 0.0
+
+# LLM Provider Configuration - easily switchable
+AGENT_LLM_PROVIDER = "openai"
+AGENT_MODEL_ID = "gpt-5-nano" # $0.050 / 1M input tokens
+# AGENT_LLM_PROVIDER = "cohere"
+# AGENT_MODEL_ID = "command-r7b-12-2024" # $0.0375 / 1M input tokens
+# AGENT_MODEL_ID = "command-a-03-2025" # $2.50 / 1M input tokens
+
 ADDITIONAL_CONTEXT = dedent("""
     Your outputs will be in markdown format so when using $ for money you need to escape it with a backslash.
     Focus on helping Canadian businesses, artists, creators, and the Canadian economy.
@@ -32,7 +32,6 @@ MAX_TOOL_CALLS = 3
 NUM_HISTORY_RUNS = 3
 
 # TODO: more search results with LLM reranking on top?
-# TODO: switch over to cohere LLM
 
 product_finding_instructions = dedent(f"""
     Find and recommend the best Canadian products - that are from Canadian owned and operated businesses.
@@ -83,14 +82,30 @@ team_storage = PostgresDb(
 # 2. understand the routing
 # 3. verify the web search is working
 
+# TODO - cheap / expensive models
+# 1. command-a for chat
+# 2. command-r for scraping / absorbing lots of data
+
+def get_llm_model():
+    """Get the configured LLM model based on provider"""
+    if AGENT_LLM_PROVIDER == "openai":
+        return OpenAIChat(id=AGENT_MODEL_ID)
+    elif AGENT_LLM_PROVIDER == "cohere":
+        return Cohere(id=AGENT_MODEL_ID)
+    else:
+        raise ValueError(f"Unsupported LLM provider: {AGENT_LLM_PROVIDER}")
+
+# TODO: when there's no relevant data in the knowledge base, agent needs to search
+# but it should also then store the search results into the knowledge base
+
 @st.cache_resource
 def get_agent_team():
+    logger.info(f"🤖 Initializing agent with {AGENT_LLM_PROVIDER}/{AGENT_MODEL_ID}")
+    
     product_finder_agent = Agent(
         name="Product Finder Agent",
         role="Find and recommend products",
-        # model=Cohere(id="command-a-03-2025"),
-        # model=OpenAIChat(id="gpt-4.1"), # so much better than 4.1-mini for the umbrella question
-        model=OpenAIChat(id=AGENT_MODEL_ID),
+        model=get_llm_model(),
         tools=[
             search_web_multi,
             fetch_urls,
