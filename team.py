@@ -1,7 +1,7 @@
 import streamlit as st
 from agno.agent import Agent
 from agno.models.openai import OpenAIChat
-# from agno.models.cohere import Cohere # TODO: fix this not working now
+from agno.models.cohere import Cohere
 from textwrap import dedent
 from agno.db.postgres import PostgresDb
 from decouple import config
@@ -13,16 +13,16 @@ import coloredlogs, logging
 logger = logging.getLogger(__name__)
 coloredlogs.install(level=os.getenv("LOG_LEVEL", "INFO"), logger=logger)
 
-# TODO: handle context windows getting too large
-
 # ------------constants
 DEBUG_MODE = os.getenv("LOG_LEVEL", "INFO").upper() == "DEBUG"
-# MODEL_ID = "gpt-4.1-mini" # -> not good enough
-# MODEL_ID = "gpt-4.1" # -> hitting TPM rate limit w pure md
-# AGENT_MODEL_ID = "gpt-5-mini"
-AGENT_MODEL_ID = "gpt-5-nano"
-# ROUTER_MODEL_ID = "gpt-5-nano"
-TEMPERATURE = 0.0
+
+# LLM Provider Configuration - easily switchable
+AGENT_LLM_PROVIDER = "openai"
+AGENT_MODEL_ID = "gpt-5-nano" # $0.050 / 1M input tokens
+# AGENT_LLM_PROVIDER = "cohere"
+# AGENT_MODEL_ID = "command-r7b-12-2024" # $0.0375 / 1M input tokens
+# AGENT_MODEL_ID = "command-a-03-2025" # $2.50 / 1M input tokens
+
 ADDITIONAL_CONTEXT = dedent("""
     Your outputs will be in markdown format so when using $ for money you need to escape it with a backslash.
     Focus on helping Canadian businesses, artists, creators, and the Canadian economy.
@@ -31,25 +31,26 @@ ADDITIONAL_CONTEXT = dedent("""
 MAX_TOOL_CALLS = 3
 NUM_HISTORY_RUNS = 3
 
-# TODO: more search results with LLM reranking on top?
-# TODO: switch over to cohere LLM
 
 product_finding_instructions = dedent(f"""
     Find and recommend the best Canadian products - that are from Canadian owned and operated businesses.
     Don't forget to include classic / iconic and well known Canadian brands (when applicable) like: Roots, Lululemon, Canada Goose, Aritzia, Joe Fresh, Red Canoe, Province of Canada, Mejuri, Duer, etc.
-    Find 5-10 options ranked by your evaluation of which are the best.
+    Find 5-10 options ranked by your evaluation of which are the best (prioritize made in canada options where possible).
 
-    Here's the tools you have to use:
-    - search_web_multi: search the web for information in parallel
-    - fetch_urls: fetch the contents of a list of urls
+    Ensure for each product you check whether it's made in canada or not.
+    This information should be in the product page or the search results.
+    If it's not then assume it's not made in canada.
 
-    You should batch all search and fetch operations to minimize tool calls.
-    In general you shouldn't be making more than {MAX_TOOL_CALLS} tool calls per request.
-    You shouldn't take longer than 10 seconds to complete your task.
+    Here are the steps you need to follow:
+    - Step 1: Search the web for information (using search_web_multi - do this once)
+    - Step 2: Fetch the contents of the urls (using fetch_urls - do this once)
+    - Step 3: Return the results in a table format 
+    
+    That's it, DO NOT REPEAT ANY STEPS.
                     
     When searching the web use search queries like:
+    - "Made in Canada <insert product name>"
     - "Canadian owned <insert product name> companies"
-    - "<insert product name> that are made in Canada"
     - "Top Canadian <insert product name> brands"
     But don't just assume every result is a canadian company or product, you need to check the sources and pull out the relevant information from the sources to make sure it's a canadian company or product.
 
@@ -65,6 +66,8 @@ product_finding_instructions = dedent(f"""
     - Product Price
     - Product Features
     - Canadian Owner / Made
+
+    If there's made in canada options -> rank these at the top of the table.
 
     You don't need to return much else other than the table.
     At the end ask the user a meaningful follow up question to keep the conversation going.
@@ -83,14 +86,30 @@ team_storage = PostgresDb(
 # 2. understand the routing
 # 3. verify the web search is working
 
+# TODO - cheap / expensive models
+# 1. command-a for chat
+# 2. command-r for scraping / absorbing lots of data
+
+def get_llm_model():
+    """Get the configured LLM model based on provider"""
+    if AGENT_LLM_PROVIDER == "openai":
+        return OpenAIChat(id=AGENT_MODEL_ID)
+    elif AGENT_LLM_PROVIDER == "cohere":
+        return Cohere(id=AGENT_MODEL_ID)
+    else:
+        raise ValueError(f"Unsupported LLM provider: {AGENT_LLM_PROVIDER}")
+
+# TODO: when there's no relevant data in the knowledge base, agent needs to search
+# but it should also then store the search results into the knowledge base
+
 @st.cache_resource
 def get_agent_team():
+    logger.info(f"🤖 Initializing agent with {AGENT_LLM_PROVIDER}/{AGENT_MODEL_ID}")
+    
     product_finder_agent = Agent(
         name="Product Finder Agent",
         role="Find and recommend products",
-        # model=Cohere(id="command-a-03-2025"),
-        # model=OpenAIChat(id="gpt-4.1"), # so much better than 4.1-mini for the umbrella question
-        model=OpenAIChat(id=AGENT_MODEL_ID),
+        model=get_llm_model(),
         tools=[
             search_web_multi,
             fetch_urls,
@@ -220,18 +239,19 @@ def get_agent_team():
     # )
     return product_finder_agent
 
-def main():
+async def main():
     team = get_agent_team()
     print("🤖 Agno CLI Agent is ready. Type 'exit' to quit.")
     while True:
         user_input = input("💁‍♀️ You: ")
         if user_input.strip().lower() == "exit":
             break
-        response = team.run(user_input)
+        response = await team.arun(user_input)
         print(f"🤖 Agno: {response.content}")
 
 if __name__ == "__main__":
-    main()
+    import asyncio
+    asyncio.run(main())
 
 # help me find a gift for my father
 # he's 62, retired, loves travelling, into star wars, hockey (especially the leafs), and he's a bit of a nerd (likes star wars, star trek, space, etc.)
@@ -239,3 +259,5 @@ if __name__ == "__main__":
 
 # I want to find some new music
 # I like Rock recently have been into alanis morset, and love the tragically hip
+
+# freeze dried cheddar dog treats
