@@ -33,10 +33,8 @@ logger = logging.getLogger(__name__)
 coloredlogs.install(level=os.getenv("LOG_LEVEL", "INFO"), logger=logger)
 
 # Configuration
-# NUM_PERSONAS = 10
-NUM_PERSONAS = 2
-# QUERIES_PER_PERSONA = 10
-QUERIES_PER_PERSONA = 2
+NUM_PERSONAS = 10
+QUERIES_PER_PERSONA = 10
 MAX_CONCURRENT_PERSONAS = 10  # Parallel persona generation
 MAX_CONCURRENT_QUERIES = 5    # Parallel query generation per persona
 MAX_CONCURRENT_RESPONSES = 3  # Parallel Snowman responses
@@ -239,7 +237,7 @@ class DatabaseManager:
         
         elapsed = time.time() - start
         logger.info(f"✅ Schema initialized in {elapsed:.2f}s")
-    
+
     async def save_persona(self, persona: Persona) -> int:
         """Save a persona and return its ID"""
         async with self.conn.cursor() as cur:
@@ -300,6 +298,36 @@ class DatabaseManager:
             )
             await self.conn.commit()
     
+    async def get_personas(self, num_personas: int) -> List[Persona]:
+        """Retrieve personas from the database"""
+        async with self.conn.cursor() as cur:
+            await cur.execute(
+                """
+                SELECT id, name, age, description, shopping_preferences, budget_range, gift_recipients
+                FROM personas
+                ORDER BY created_at DESC
+                LIMIT %s
+                """,
+                (num_personas,),
+            )
+            rows = await cur.fetchall()
+            
+            personas = []
+            for row in rows:
+                persona = Persona(
+                    id=row[0],
+                    name=row[1],
+                    age=row[2],
+                    description=row[3],
+                    shopping_preferences=row[4],
+                    budget_range=row[5],
+                    gift_recipients=row[6] if isinstance(row[6], list) else [],
+                )
+                personas.append(persona)
+            
+            logger.info(f"📥 Retrieved {len(personas)} personas from database")
+            return personas
+    
     async def close(self):
         """Close database connection"""
         if self.conn:
@@ -318,7 +346,9 @@ class BrainBuilder:
     async def generate_persona(self, persona_id: int) -> Persona:
         """Generate a single Christmas shopping persona"""
         prompt = f"""Generate a realistic Christmas shopping persona (persona #{persona_id}). 
-        This should be a diverse individual with unique characteristics.
+        This should be a diverse individual with unique characteristics. 
+
+        But every persona should be a Canadian.
         
         Return a JSON object with:
         - name: Full name (STRING)
@@ -368,10 +398,26 @@ class BrainBuilder:
         Generate a realistic Christmas gift search query as if you're asking Snowman (a Canadian-focused shopping assistant).
         This is query #{query_num} from you. Make it natural and specific.
         
+        Generate queries that are specific to the persona but that would be common things a Canadian would be shopping for.
+
         Return only the query text, nothing else. Examples:
         - "I need a warm winter coat for my mom who loves hiking"
         - "Looking for a unique kitchen gadget for my foodie husband under $100"
         - "Help me find eco-friendly toys for my 5-year-old nephew"
+        - "I'm looking for a hockey stick for my son"
+        - "I'm looking for dog treats for my dog"
+        - "Help me find wellness products for my sister"
+        - "Help me find a new pair of yoga pants for my wife"
+        - "Help me find a nice quarter zip for my husband"
+        - "Help me find a new flannel for my dad"
+        - "Help me find a new pair of jeans for my daughter"
+        - "Help me find a new pair of snow boots for my mom"
+        - "Help me find a nice Canadian themed t-shirt for my friend"
+        - "Help me find a nice Canadian themed mug for my cousin"
+        - "Help me find a nice Canadian themed sweater for my brother"
+        - "Help me find a nice Canadian themed scarf for my uncle"
+
+        Only ask for one thing at a time for one person at a time.
         """
         
         query = await self.llm.generate(prompt)
@@ -386,7 +432,7 @@ class BrainBuilder:
     async def get_snowman_response(self, query: GiftRequest) -> SnowmanResponse:
         """Get Snowman's response to a query"""
         if not self.agent:
-            self.agent = get_agent_team()
+            self.agent = get_agent_team(search_knowledge_base=False, search_web=True)
         
         start = time.time()
         
@@ -501,7 +547,7 @@ class BrainBuilder:
         elapsed = time.time() - start
         logger.info(f"✅ Step 4 complete: Saved to database in {elapsed:.2f}s ({elapsed/len(queries):.3f}s per item)")
     
-    async def build(self):
+    async def build(self, regenerate_personas: bool = True):
         """Run the complete brain building process"""
         total_start = time.time()
         logger.info("🧠 Starting Snowman Brain Build Process")
@@ -518,10 +564,18 @@ class BrainBuilder:
             # ex: do any outer_loop batching up personas by 100 or something
 
             # Run all steps
-            personas = await self.step_1_generate_personas()
+            if regenerate_personas:
+                personas = await self.step_1_generate_personas()
+            else:
+                personas = await self.db.get_personas(num_personas=NUM_PERSONAS)
+            
             queries = await self.step_2_generate_queries(personas)
-            responses = await self.step_3_get_responses(queries)
-            await self.step_4_save_to_vector_db(queries, responses)
+
+            responses = []
+            for query in tqdm(queries, desc="Getting responses"):
+                response = await self.get_snowman_response(query)
+                responses.append(response)
+                await self.step_4_save_to_vector_db([query], [response])
             
             # Final summary
             total_elapsed = time.time() - total_start
@@ -541,12 +595,12 @@ class BrainBuilder:
             await self.db.close()
 
 
-async def main():
+async def main(regenerate_personas: bool = True):
     """Main entry point"""
     builder = BrainBuilder()
-    await builder.build()
+    await builder.build(regenerate_personas)
 
 
 if __name__ == "__main__":
-    asyncio.run(main())
+    asyncio.run(main(regenerate_personas=True))
 

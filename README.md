@@ -27,7 +27,9 @@ source .venv/bin/activate
 # Set environment variables
 export OPENAI_API_KEY=your_openai_api_key
 export PUREMD_API_KEY=your_puremd_api_key
+export COHERE_API_KEY=your_cohere_api_key
 
+export LOG_LEVEL=DEBUG
 
 # Run the app
 uv run streamlit run main.py
